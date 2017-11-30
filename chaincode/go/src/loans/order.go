@@ -276,7 +276,10 @@ func (s *SmartContract) confirmOrder(stub shim.ChaincodeStubInterface, args []st
 			return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\""+msg+"\"}")
 		}
 	} else
-	if(args[0] == order.Lender){
+	if(args[0] == order.Lender || len(order.Lender)==0){
+		if(len(order.Lender)==0){
+			order.Lender = args[0];
+		}
 		if order.Status == "NEW" || order.Status == "ACTIVE_OFFER" {
 			if order.Status == "ACTIVE_OFFER"{
 				// remove from ACTIVE_OFFER array
