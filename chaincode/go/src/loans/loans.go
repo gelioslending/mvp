@@ -54,7 +54,7 @@ type Order struct {
 	Borrower 	string `json:"borrowerId"`
 	Lender 		string `json:"lenderId"`
 	Sum	 	float64 `json:"sum"`
-	Percent 	int    `json:"percent"`
+	Percent 	float64 `json:"percent"`
 	Period		int    `json:"period"`   // in Month
 	CreateDate	string `json:"createDate"`
 	StartDate	string `json:"startDate"`

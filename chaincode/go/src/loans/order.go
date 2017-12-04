@@ -46,10 +46,10 @@ func (s *SmartContract) createOrder(stub shim.ChaincodeStubInterface, args []str
 	if args[2] == "" && args[3] =="" {
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not be null BORROWER='"+args[2]+"' and LENDER='"+args[3]+"'\"}")
 	}
-	percent,err5 := strconv.Atoi(args[5]);
+	percent,err5 := strconv.ParseFloat(args[5], 32)
 	if(err5 != nil){
 		logger.Error("Can not parse Percent data")
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need int value)\"}")
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need float32 value)\"}")
 	}
 	period,err3 := strconv.Atoi(args[1]);
 	if(err3 != nil){
@@ -420,9 +420,8 @@ func (s *SmartContract) getAllOrders(stub shim.ChaincodeStubInterface, args []st
 	return res, "";
 }
 
-func (s *SmartContract) getSumToRepaymentInner(stub shim.ChaincodeStubInterface, sum float64, percent int) (float64) {
-	res := sum * float64(percent)
-	return res
+func (s *SmartContract) getSumToRepaymentInner(stub shim.ChaincodeStubInterface, sum float64, percent float64) (float64) {
+	return sum * percent;
 }
 
 func (s *SmartContract) getOrder(stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -534,15 +533,15 @@ func (s *SmartContract) getOfferListInner(stub shim.ChaincodeStubInterface, key 
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Incorrect number of arguments. Expecting 4, current len = "+strconv.Itoa(len(args))+"\"}")
 	}
 
-	percentSt,err5 := strconv.Atoi(args[2]);
+	percentSt,err5 := strconv.ParseFloat(args[2], 32);
 	if(err5 != nil){
 		logger.Error("Can not parse Percent data")
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need int value)\"}")
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need float32 value)\"}")
 	}
-	percentFin,err5 := strconv.Atoi(args[5]);
+	percentFin,err5 := strconv.ParseFloat(args[5], 32);
 	if(err5 != nil){
 		logger.Error("Can not parse Percent data")
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need int value)\"}")
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need float32 value)\"}")
 	}
 	sumSt, err6 := strconv.ParseFloat(args[1], 64)
 	if(err6 != nil){
@@ -606,10 +605,10 @@ func (s *SmartContract) updateOrder(stub shim.ChaincodeStubInterface, args []str
 	if args[2] == "" && args[3] =="" {
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not be null BORROWER='"+args[2]+"' and LENDER='"+args[3]+"'\"}")
 	}
-	percent,err5 := strconv.Atoi(args[5]);
+	percent,err5 := strconv.ParseFloat(args[5], 32);
 	if(err5 != nil){
 		logger.Error("Can not parse Percent data")
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need int value)\"}")
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Percent data (need float32 value)\"}")
 	}
 	period,err3 := strconv.Atoi(args[1]);
 	if(err3 != nil){
