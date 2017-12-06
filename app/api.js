@@ -52,13 +52,38 @@ var createSchedule = function(login,orderId,callback){
     // tranches - array of tranche JSON
     // 0-login,1-OrderId,2-scheduleId,3-amount,4-chargeIssueFee,5-issued,6-activeBefore,7-tranches
     getOrder(login,orderId,function (order) {
-        bapi.getPaymentsSchedule(order.contractId, "", function(schedule){
-            invoking([login,orderId,""+schedule.id,""+schedule.amount,""+schedule.chargeIssueFee,""+schedule.issued,
-                ""+schedule.activeBefore,JSON.stringify(schedule.tranches)], "createSchedule", function(res){
+        var date = dateFormat(Date.now(), "yyyy-mm-dd");
+        bapi.getPaymentsSchedule(order.sum,order.percent, date,order.period+"", function(schedule){
+            if(schedule && schedule.status == "ok") {
+                invoking([login, orderId, "", "" + schedule.data.amount, "" + schedule.data.chargeIssueFee, "" + schedule.data.issued,
+                    "" + schedule.data.activeBefore, JSON.stringify(schedule.data.tranches)], "createSchedule", function (res) {
 
-                    res.scheduleId = schedule.id;
-                    callback(res);
-            });
+                    getTrans(res.trxnId, login, function (result2) {
+                        try {
+                            var action = result2.transactionEnvelope.payload.data.actions[0];
+                            var proposal_response_payload = action.payload.action.proposal_response_payload;
+                            var payload = proposal_response_payload.extension.response.payload;
+                            var data;
+                            if (payload) {
+                                data = JSON.parse(payload);
+                                res.scheduleId = ""+data.scheduleId;
+                                callback(res);
+                            }
+                        } catch (e) {
+                            console.log(e)
+                            callback({"status": false, "description": e.message + ""});
+                        }
+                    })
+                });
+            } else {
+                if(schedule && schedule.data && schedule.data.code) {
+                    console.log("ERROR: " + schedule.data.code);
+                    callback({"status": false, "description": schedule.data.code + ""});
+                } else {
+                    console.log("ERROR: ");
+                    callback({"status": false, "description": "ERROR"});
+                }
+            }
         })
     })
 }
@@ -136,6 +161,7 @@ var createOrderInBc = function(login,period,borrower,lender,sum,percent,startDat
                     res.orderId = data.orderId;
                     getUser(login, function(user){
                         bapi.getPercentage(user.brainyId, sum, function(perc,contractId){
+                            if(contractId=="") contractId = "0";
                             updateOrder(login,period,borrower,lender,sum,""+perc,startDate,finishDate,""+data.orderId,""+contractId,function(result){
                                 logger.info(JSON.stringify(result))
                                 logger.info("[orderId="+data.orderId+",user="+login+"] Percent was updated successfully")
@@ -256,6 +282,20 @@ var userLogin = function(login,pass,callback){
 var getSumToRepayment = function(login,orderId,callback){
     //"ivan", "123123"
     querying([login,orderId], "getSumToRepayment", function(res){
+        callback(res);
+    });
+}
+
+var closeOrder = function(login,orderId,callback){
+    //"ivan","123"
+    invoking([login,orderId], "closeOrder", function(res){
+        callback(res);
+    });
+}
+
+var cancelOrder = function(login,orderId,callback){
+    //"ivan","123"
+    invoking([login,orderId], "cancelOrder", function(res){
         callback(res);
     });
 }
@@ -520,6 +560,8 @@ module.exports.tokenTransferInBc = tokenTransferInBc;
 module.exports.getHistoryTransferToken = getHistoryTransferToken;
 module.exports.getOperations = getOperations;
 module.exports.getTrans = getTrans;
+module.exports.closeOrder = closeOrder;
+module.exports.cancelOrder = cancelOrder;
 
 module.exports.activateOffer = activateOffer;
 module.exports.getBorrowOffers = getBorrowOffers;

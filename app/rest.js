@@ -363,19 +363,49 @@ app.put(context+'/activateOffer', function(req, res) {
 
 app.post(context+'/getBorrowOffers', function(req, res) {
     var username = req.username;
-
     var sumSt = tryNull(req.body.sumSt);
     var percentSt = tryNull(req.body.percentSt);
     var periodSt = tryNull(req.body.periodSt);
     var sumFin = tryNull(req.body.sumFin);
     var percentFin = tryNull(req.body.percentFin);
     var periodFin = tryNull(req.body.periodFin);
-
     api.getBorrowOffers(username, sumSt, percentSt, periodSt, sumFin, percentFin, periodFin, function(result){
-
         res.json(getMinMax(result));
     })
 });
+
+app.post(context+'/closeOrder', function(req, res) {
+    var username = req.username;
+    var orderId = tryNull(req.body.orderId);
+
+    api.closeOrder(username, orderId, function(result){
+        res.json(result);
+    })
+});
+
+app.post(context+'/cancelOrder', function(req, res) {
+    var username = req.username;
+    var orderId = tryNull(req.body.orderId);
+
+    api.cancelOrder(username, orderId, function(result){
+        res.json(result);
+    })
+});
+
+app.post(context+'/getBorrows', function(req, res) {
+    var username = req.username;
+    api.getBorrows(username, username, function(result){
+        res.json(result);
+    })
+});
+
+app.post(context+'/getLends', function(req, res) {
+    var username = req.username;
+    api.getLends(username, username, function(result){
+        res.json(result);
+    })
+});
+
 
 app.post(context+'/getTransaction', function(req, res) {
     var username = req.username;

@@ -13,7 +13,7 @@ import (
 // key TRANCHE_(repaymentDate,ScheduleId)
 // key TRANCHE-LAST-INDEX value=index
 // key ACTIVE_SCHEDULE_{OrderId} <= key of schedule
-
+// key SCHEDULE-LAST-INDEX  value=index
 
 //-----------------------------------------------------------------------------------
 // -----------------------------  Schedule story ------------------------------------
@@ -30,10 +30,32 @@ func (s *SmartContract) createSchedule(stub shim.ChaincodeStubInterface, args []
 	if len(args) != 8 {
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Incorrect number of arguments. Expecting 8, current len = "+strconv.Itoa(len(args))+"\"}")
 	}
-	id,err5 := strconv.ParseUint(args[2],10,64);
-	if(err5 != nil){
-		logger.Error("Can not parse ID data")
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse ID data (need int64 value)\"}")
+	var id uint64 = 0;
+	var err error;
+	newIdStr := "";
+	if(len(args[2])==0) {
+		newId, err := s.getCurrentScheduleIndex(stub)
+		if err != "" {
+			logger.Error(err)
+			jsonResp := "{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":" + err + "}"
+			return shim.Error(jsonResp)
+		}
+		newId++
+		newIdStr = strconv.FormatUint(newId, 10)
+		id = newId
+
+		err3 := stub.PutState("SCHEDULE-LAST-INDEX", []byte(newIdStr))
+		if err3 != nil {
+			logger.Errorf("Can't update SCHEDULE-LAST-INDEX")
+			return shim.Error("{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":\"Can't update SCHEDULE-LAST-INDEX\"}")
+		}
+	} else {
+		newIdStr = args[2];
+		id, err = strconv.ParseUint(args[2], 10, 64);
+		if (err != nil) {
+			logger.Error("Can not parse ID data")
+			return shim.Error("{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":\"Can not parse ID data (need int64 value)\"}")
+		}
 	}
 	amount,err7 := strconv.ParseFloat(args[3],64);
 	if(err7 != nil){
@@ -51,7 +73,7 @@ func (s *SmartContract) createSchedule(stub shim.ChaincodeStubInterface, args []
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse issued (need bool value)\"}")
 	}
 
-	schedKey,err2 := stub.CreateCompositeKey("SCHEDULE_", []string{args[2]})
+	schedKey,err2 := stub.CreateCompositeKey("SCHEDULE_", []string{newIdStr})
 	if(err2!=nil){
 		logger.Error("Can not serializated Schedule")
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not serializated Schedule\"}")
@@ -61,20 +83,20 @@ func (s *SmartContract) createSchedule(stub shim.ChaincodeStubInterface, args []
 		logger.Error(err3)
 		return shim.Error(err3)
 	}
-	order.ScheduleIds = s.appendData(order.ScheduleIds, args[2])
+	order.ScheduleIds = s.appendData(order.ScheduleIds, newIdStr)
 
 	trancheIds := []string{};
 	var tranche []Tranche;
-	err := json.Unmarshal([]byte(args[7]), &tranche)
+	err = json.Unmarshal([]byte(args[7]), &tranche)
 	if err != nil {
 		logger.Error("Can not parse Tranche")
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not parse Tranche (need JSON array)"+err.Error()+"\"}")
 	}
 	for i :=range tranche {
-		tranche[i].ScheduleId = args[2];
+		tranche[i].ScheduleId = newIdStr;
 
 		trancheAsBytes, _ := json.Marshal(tranche[i])
-		compositeKey:= "TRANCHE_"+s.createKeyDate(tranche[i].RepaymentDate)+args[2];
+		compositeKey:= "TRANCHE_"+s.createKeyDate(tranche[i].RepaymentDate)+newIdStr;
 		err1:= stub.PutState(compositeKey, trancheAsBytes)
 
 		if(err1 != nil){
@@ -107,7 +129,7 @@ func (s *SmartContract) createSchedule(stub shim.ChaincodeStubInterface, args []
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not change Order\"}")
 	}
 	logger.Info("########### "+projectName+" "+version+" success createSchedule ("+args[0]+") ###########")
-	return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Schedule is successfully added\"}"));
+	return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"scheduleId\":"+newIdStr+",\"description\":\"Schedule is successfully added\"}"));
 }
 //------------------------------------------------------------------------------------
 func (s *SmartContract) setActiveSchedule(stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -481,6 +503,24 @@ func (s *SmartContract) paymentTranche(stub shim.ChaincodeStubInterface, args []
 
 	logger.Info("########### "+projectName+" "+version+" success paymentTranche ("+args[0]+") ###########")
 	return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Tranche is successfully changed\"}"));
+}
+//------------------------------------------------------------------------------------
+func (s *SmartContract) getCurrentScheduleIndex(stub shim.ChaincodeStubInterface) (uint64, string) {
+	ind, err := stub.GetState("SCHEDULE-LAST-INDEX")
+	if err != nil {
+		return 0, "\"Failed to get SCHEDULE-LAST-INDEX: "+err.Error()+"\""
+	} else {
+		if len(ind)>0 {
+			index, err := strconv.ParseUint(string(ind),10,64)
+			if err != nil {
+				return 0, "\"Can't create sequence SCHEDULE-LAST-INDEX\""
+			} else {
+				return index, ""
+			}
+		} else {
+			return 0, "\"Can't get sequence SCHEDULE-LAST-INDEX=nil\""
+		}
+	}
 }
 //------------------------------------------------------------------------------------
 func (s *SmartContract) getCurrentTrancheIndex(stub shim.ChaincodeStubInterface) (uint64, string) {

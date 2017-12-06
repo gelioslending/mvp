@@ -9,7 +9,7 @@ var transport = nodemailer.createTransport({
     secure: true, // use SSL
     auth: {
         user: 'sbt.blockchain@gmail.com',
-        pass: new Buffer("YXp4YXp4MTIz", 'base64').toString('ascii')
+        pass: new Buffer("YXp4YXp4MTIzQA==", 'base64').toString('ascii')
     }
 });
 
@@ -18,7 +18,7 @@ var transport = nodemailer.createTransport({
 //     port: 465,
 //     auth: {
 //         user: 'sbt.blockchain@yandex.ru',
-//         pass: new Buffer("YXp4YXp4MTIz", 'base64').toString('ascii')
+//         pass: new Buffer("YXp4YXp4MTIzQA==", 'base64').toString('ascii')
 //     },
 //     secure: true
 // });

@@ -74,9 +74,9 @@ var orderTest = function(r) {
     var t = pushAll(r);
     api.createOrderInBc('rom','24','rom','','10000','20','2017-10-01','2018-10-01',function(ord) {
         t.push({"method": "createOrder            ", "success": ord.status});
-        api.createOrderInBc('rom', '24', '', 'rom', '45000', '20', '2017-10-01', '2018-10-01', function (ord2) {
+        api.createOrderInBc('rom1', '24', 'rom1', '', '45000', '20', '2017-10-01', '2018-10-01', function (ord2) {
             t.push({"method": "createOrder            ", "success": ord2.status});
-            api.getOrder('rom', '1', function (order) {
+            api.getOrder('rom', ord.orderId, function (order) {
                 t.push({"method": "getOrder               ", "success": getSt(order)});
                 api.activateOffer("rom", ""+ord.orderId, function (off) {
                     t.push({"method": "activateOffer          ", "success": off.status});
@@ -128,30 +128,8 @@ var orderTest = function(r) {
 
 var scheduleTest = function(r,orderId) {
     var t = pushAll(r);
-    api.createSchedule('rom',orderId,//'123','10000','true','true','true','['+
-    // '{"id":null,"issueDate":"2017-05-22","repaymentDate":"2017-06-22","principal":17309,"interest":24620,"lgot":false,"eachRepaymentFee":0,"rest":982691},'+
-    // '{"id":null,"issueDate":"2017-06-22","repaymentDate":"2017-07-22","principal":18515,"interest":23414,"lgot":false,"eachRepaymentFee":0,"rest":964176},'+
-    // '{"id":null,"issueDate":"2017-07-22","repaymentDate":"2017-08-22","principal":18191,"interest":23738,"lgot":false,"eachRepaymentFee":0,"rest":945985},'+
-    // '{"id":null,"issueDate":"2017-08-22","repaymentDate":"2017-09-22","principal":18639,"interest":23290,"lgot":false,"eachRepaymentFee":0,"rest":927346},'+
-    // '{"id":null,"issueDate":"2017-09-22","repaymentDate":"2017-10-22","principal":19834,"interest":22095,"lgot":false,"eachRepaymentFee":0,"rest":907512},'+
-    // '{"id":null,"issueDate":"2017-10-22","repaymentDate":"2017-11-22","principal":19586,"interest":22343,"lgot":false,"eachRepaymentFee":0,"rest":887926},'+
-    // '{"id":null,"issueDate":"2017-11-22","repaymentDate":"2017-12-22","principal":20773,"interest":21156,"lgot":false,"eachRepaymentFee":0,"rest":867153},'+
-    // '{"id":null,"issueDate":"2017-12-22","repaymentDate":"2018-01-22","principal":20580,"interest":21349,"lgot":false,"eachRepaymentFee":0,"rest":846573},'+
-    // '{"id":null,"issueDate":"2018-01-22","repaymentDate":"2018-02-22","principal":21086,"interest":20843,"lgot":false,"eachRepaymentFee":0,"rest":825487},'+
-    // '{"id":null,"issueDate":"2018-02-22","repaymentDate":"2018-03-22","principal":23572,"interest":18357,"lgot":false,"eachRepaymentFee":0,"rest":801915},'+
-    // '{"id":null,"issueDate":"2018-03-22","repaymentDate":"2018-04-22","principal":22186,"interest":19743,"lgot":false,"eachRepaymentFee":0,"rest":779729}]',
-        function(sch){
-
-        api.createSchedule('rom',orderId,//'1234','20000','false','false','true','['+
-            // '{"id":null,"issueDate":"2018-05-22","repaymentDate":"2018-06-22","principal":1739,"interest":2460,"lgot":false,"eachRepaymentFee":0,"rest":98691},'+
-            // '{"id":null,"issueDate":"2018-06-22","repaymentDate":"2018-07-22","principal":1855,"interest":2344,"lgot":false,"eachRepaymentFee":0,"rest":96176},'+
-            // '{"id":null,"issueDate":"2018-07-22","repaymentDate":"2018-08-22","principal":1811,"interest":2378,"lgot":false,"eachRepaymentFee":0,"rest":94985},'+
-            // '{"id":null,"issueDate":"2018-08-22","repaymentDate":"2018-09-22","principal":1869,"interest":2320,"lgot":false,"eachRepaymentFee":0,"rest":92346},'+
-            // '{"id":null,"issueDate":"2018-09-22","repaymentDate":"2018-10-22","principal":1984,"interest":2205,"lgot":false,"eachRepaymentFee":0,"rest":90512},'+
-            // '{"id":null,"issueDate":"2018-10-22","repaymentDate":"2018-11-22","principal":1956,"interest":2233,"lgot":false,"eachRepaymentFee":0,"rest":88926},'+
-            // '{"id":null,"issueDate":"2019-03-22","repaymentDate":"2019-04-22","principal":2216,"interest":1973,"lgot":false,"eachRepaymentFee":0,"rest":77729}]',
-            function(sch2){
-
+    api.createSchedule('rom',orderId,function(sch){
+        api.createSchedule('rom',orderId,function(sch2){
             t.push({"method":"createSchedule         ","success":sch.status});
             t.push({"method":"createSchedule         ","success":sch2.status});
             api.getScheduleById('rom',''+sch.scheduleId,function (getSc) {
@@ -169,7 +147,7 @@ var scheduleTest = function(r,orderId) {
                                     } else t.push({"method": "getListOfTranchesByDate", "success": false});
                                 } else t.push({"method": "getListOfTranchesByDate", "success": false});
 
-                                api.paymentTranche('rom','2017-11-22', ''+sch.scheduleId, "100000", function(pt){
+                                api.paymentTranche('rom',tran.result[0].repaymentDate, ''+sch.scheduleId, "100000", function(pt){
                                     t.push({"method": "paymentTranche         ", "success": pt.status});
 
                                     console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")

@@ -110,6 +110,7 @@ func (s *SmartContract) Init(stub shim.ChaincodeStubInterface) pb.Response  {
 	stub.PutState("ORDER-LAST-INDEX", []byte("0"))
 	stub.PutState("ACTIVE_OFFERS_BORROWS", []byte("[]"))
 	stub.PutState("ACTIVE_OFFERS_LENDS", []byte("[]"))
+	stub.PutState("SCHEDULE-LAST-INDEX", []byte("0"))
 	return shim.Success(nil)
 }
 //------------------------------------------------------------------------------------
@@ -156,8 +157,8 @@ func (s *SmartContract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			//delete(userMap, "Pass")
 			//delete(userMap, "Orders")
 			//delete(userMap, "Schedules")
-			user.Orders = []string{}
-			user.Schedules = []string{}
+			//user.Orders = []string{}
+			//user.Schedules = []string{}
 
 			usr, _ = json.Marshal(user)
 			logger.Info("return data userJson = "+string(usr))
@@ -201,11 +202,12 @@ func (s *SmartContract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "closeOrder":
 		s.addOperation(stub, args, "CLOSE", "ORDER", function)
 		return s.closeOrder(stub, user, args)
+	case "cancelOrder":
+		s.addOperation(stub, args, "CANCEL", "ORDER", function)
+		return s.cancelOrder(stub, user, args)
 	case "updateOrder":
 		s.addOperation(stub, args, "UPDATE", "ORDER", function)
 		return s.updateOrder(stub, args)
-	//case "getUserOffers":
-	//	return s.getUserOffers(stub, user, args)
 	case "getBorrowOffers":
 		return s.getBorrowOffers(stub, args)
 	case "getLendOffers":

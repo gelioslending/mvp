@@ -341,7 +341,12 @@ func (s *SmartContract) getLends(stub shim.ChaincodeStubInterface, args []string
 
 	res, err := s.getOrders(stub, args, "LENDER")
 	if err != "" {
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\""+err+"\"}")
+		if err == "Empty list" {
+			err = "{\"login\":\""+args[0]+"\", \"status\":true,\"description\":\"Empty list\"}"
+			return shim.Success([]byte(err));
+		} else {
+			return shim.Error("{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":\"" + err + "\"}")
+		}
 	}
 	offr, _ := json.Marshal(res)
 	logger.Info("return data ordersJson = "+string(offr))
@@ -360,7 +365,12 @@ func (s *SmartContract) getBorrows(stub shim.ChaincodeStubInterface, args []stri
 
 	res, err := s.getOrders(stub, args, "BORROWER")
 	if err != "" {
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\""+err+"\"}")
+		if err == "Empty list" {
+			err = "{\"login\":\""+args[0]+"\", \"status\":true,\"description\":\"Empty list\"}"
+			return shim.Success([]byte(err));
+		} else {
+			return shim.Error("{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":\"" + err + "\"}")
+		}
 	}
 	offr, _ := json.Marshal(res)
 	logger.Info("return data ordersJson = "+string(offr))
@@ -372,7 +382,7 @@ func (s *SmartContract) getOrders(stub shim.ChaincodeStubInterface, args []strin
 	var res []Order
 	orders, err := s.getAllOrders(stub, args, key);
 
-	if len(orders)>0 || err!="" {
+	if err=="" {
 		for i:=0; i<len(orders); i++ {
 			if key == "BORROWER" &&	orders[i].Borrower == args[0] {
 				res = append(res, orders[i])
@@ -381,7 +391,11 @@ func (s *SmartContract) getOrders(stub shim.ChaincodeStubInterface, args []strin
 				res = append(res, orders[i])
 			}
 		}
-		return res, "";
+		if len(res)==0 {
+			return res, "Empty list"
+		} else {
+			return res, "";
+		}
 	} else {
 		return orders, err
 	}
@@ -416,6 +430,8 @@ func (s *SmartContract) getAllOrders(stub shim.ChaincodeStubInterface, args []st
 				}
 			}
 		}
+	} else {
+		return res, "Empty list"
 	}
 	return res, "";
 }
@@ -569,8 +585,9 @@ func (s *SmartContract) getOfferListInner(stub shim.ChaincodeStubInterface, key 
 	}
 
 	var buffer bytes.Buffer
-	buffer.WriteString("{\"length\":"+strconv.Itoa(len(arr))+",\"result\":[")
+	buffer.WriteString("\"total\":"+strconv.Itoa(len(arr))+",\"result\":[")
 	alreadyWritten := false
+	count := 0;
 
 	for i := range arr {
 		order, _, err2 := s.getOrderByIdInner(stub, arr[i]);
@@ -586,14 +603,16 @@ func (s *SmartContract) getOfferListInner(stub shim.ChaincodeStubInterface, key 
 				}
 				buffer.WriteString(string(ordStr));
 				alreadyWritten = true
+				count++
 			}
 		}
 	}
 	buffer.WriteString("]}")
+	result := "{\"length\":"+strconv.Itoa(count)+","+buffer.String();
 
-	logger.Info("return data offersJson = "+buffer.String())
+	logger.Info("return data offersJson = "+result)
 	logger.Info("########### "+projectName+" "+version+" success getOffers for user="+args[0]+" ###########")
-	return shim.Success(buffer.Bytes());
+	return shim.Success([]byte(result));
 }
 
 func (s *SmartContract) updateOrder(stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -605,6 +624,10 @@ func (s *SmartContract) updateOrder(stub shim.ChaincodeStubInterface, args []str
 	if args[2] == "" && args[3] =="" {
 		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not be null BORROWER='"+args[2]+"' and LENDER='"+args[3]+"'\"}")
 	}
+	if args[2] == args[3] {
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not be BORROWER=LENDER\"}")
+	}
+
 	percent,err5 := strconv.ParseFloat(args[5], 32);
 	if(err5 != nil){
 		logger.Error("Can not parse Percent data")
@@ -633,13 +656,21 @@ func (s *SmartContract) updateOrder(stub shim.ChaincodeStubInterface, args []str
 		return shim.Error(err2)
 	}
 
-	if args[2]!= "" && order.Borrower=="" {
+	if args[2]!= "" && len(order.Borrower)==0 {
+		if args[2] == order.Lender {
+			return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not be BORROWER=LENDER\"}")
+		}
+		order.Borrower = args[2];
 		err4 := s.addOrderToUser(stub, "BORROWER", args[2], compositeKeyId)
 		if err4 != "" {
 			return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\""+err4+"\"}")
 		}
 	}
-	if args[3]!="" && order.Lender=="" {
+	if args[3]!="" && len(order.Lender)==0 {
+		if args[3] == order.Borrower {
+			return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can not be BORROWER=LENDER\"}")
+		}
+		order.Lender = args[3];
 		err4 :=s.addOrderToUser(stub, "LENDER", args[3], compositeKeyId)
 		if err4 != "" {
 			return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\""+err4+"\"}")
@@ -650,12 +681,6 @@ func (s *SmartContract) updateOrder(stub shim.ChaincodeStubInterface, args []str
 	}
 	if period > 0 {
 		order.Period = period;
-	}
-	if len(args[2])>0 {
-		order.Borrower = args[2];
-	}
-	if len(args[3])>0 {
-		order.Lender = args[3];
 	}
 	if sum > 0 {
 		order.Sum = sum;
@@ -698,9 +723,13 @@ func (s *SmartContract) closeOrder(stub shim.ChaincodeStubInterface, user User, 
 		logger.Info("########### "+projectName+" "+version+" success closeOrder ("+args[0]+") Already CLOSED ###########")
 		return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order already closed\"}"))
 	}
+	if order.Status == "CANCELED" {
+		logger.Info("########### "+projectName+" "+version+" success closeOrder ("+args[0]+") Already CANCELED ###########")
+		return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order already canceled\"}"))
+	}
 	if order.Status != "ACTIVE" {
-		logger.Error("Order could by in status 'CLOSED'")
-		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order could by in status 'CLOSED'\"}")
+		logger.Error("Order must be 'ACTIVE'")
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order must be 'ACTIVE'\"}")
 	}
 
 	if(args[0] != order.Lender){
@@ -708,7 +737,7 @@ func (s *SmartContract) closeOrder(stub shim.ChaincodeStubInterface, user User, 
 			logger.Info("########### "+projectName+" "+version+" success closeOrder ("+args[0]+") by ADMIN ###########")
 			//return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"(ADMIN) Order successfully closed\"}"));
 		} else {
-			logger.Error("Failed to CLOSE ORDER ("+args[0]+") you can not activate order")
+			logger.Error("Failed to CLOSE ORDER ("+args[0]+") you can not close order")
 			jsonResp := "{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Failed to close ORDER, need user '"+order.Lender+"'\"}"
 			return shim.Error(jsonResp)
 		}
@@ -739,5 +768,66 @@ func (s *SmartContract) closeOrder(stub shim.ChaincodeStubInterface, user User, 
 	return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order successfully closed\"}"));
 }
 
+func (s *SmartContract) cancelOrder(stub shim.ChaincodeStubInterface, user User, args []string) pb.Response {
+	//{Login - 0, orderId}
+	if len(args) != 2 {
+		return shim.Error("{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":\"Incorrect number of arguments. Expecting 2, current len = " + strconv.Itoa(len(args)) + "\"}")
+	}
+	if args[1] == "" {
+		return shim.Error("{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":\"Can not be null orderId\"}")
+	}
+	order, key, err := s.getOrderByIdInner(stub, args[1]);
+	if err != "" {
+		logger.Error(err)
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\""+err+"\"}")
+	}
+	if order.Status == "CLOSED" {
+		logger.Info("########### "+projectName+" "+version+" success closeOrder ("+args[0]+") Already CLOSED ###########")
+		return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order already closed\"}"))
+	}
+	if order.Status == "ACTIVE" {
+		logger.Error("Order can't be 'ACTIVE'")
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order can't be 'ACTIVE'\"}")
+	}
+
+	if(args[0] != order.Borrower){
+		if(user.Role == "ADMIN"){
+			logger.Info("########### "+projectName+" "+version+" success closeOrder ("+args[0]+") by ADMIN ###########")
+			//return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"(ADMIN) Order successfully closed\"}"));
+		} else {
+			usr := order.Borrower;
+			if (len(usr) == 0) { usr = order.Lender}
+			if (args[0] != usr) {
+				logger.Error("Failed to CANCEL ORDER (" + args[0] + ") you can not cancel order")
+				jsonResp := "{\"login\":\"" + args[0] + "\",\"status\":false,\"description\":\"Failed to cancel ORDER, need user '" + usr + "'\"}"
+				return shim.Error(jsonResp)
+			}
+		}
+	}
+	order.Status = "CANCELED"
+	compositeKeyId, err2 := stub.CreateCompositeKey("ORDER-ACTIVE", []string{args[1]})
+	logger.Info("compositeKey = ", compositeKeyId)
+	if err2 != nil {
+		logger.Error("Can't create siquence ORDER-ACTIVE for login="+args[0])
+		return shim.Error("{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Can't create siquence ORDER-ACTIVE\"}")
+	}
+	err2 = stub.PutState(compositeKeyId, []byte(""))
+	if err2 != nil {
+		logger.Error("Failed to remove siquence ORDER-ACTIVE ("+args[0]+"): "+err2.Error())
+		jsonResp := "{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Failed to remove siquence ORDER-ACTIVE "+err2.Error()+"\"}"
+		return shim.Error(jsonResp)
+	}
+
+	ofr, _ := json.Marshal(order)
+	err2 = stub.PutState(key, ofr)
+
+	if err2 != nil {
+		logger.Error("Failed to cancel ORDER ("+args[0]+"): "+err2.Error())
+		jsonResp := "{\"login\":\""+args[0]+"\",\"status\":false,\"description\":\"Failed to cancel ORDER ("+args[0]+") "+err2.Error()+"\"}"
+		return shim.Error(jsonResp)
+	}
+	logger.Info("########### "+projectName+" "+version+" success cancelOrder ("+args[0]+") ###########")
+	return shim.Success([]byte("{\"login\":\""+args[0]+"\",\"status\":true,\"description\":\"Order successfully canceled\"}"));
+}
 
 
